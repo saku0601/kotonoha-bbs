@@ -36,7 +36,10 @@ def load_user(user_id):
 @app.route('/')
 @login_required
 def index():
-    return f'ようこそ、{current_user.username}さん！'
+    return f'''
+    ようこそ、{current_user.username}さん！<br>
+    <a href="{url_for('board')}">コルクボードへ</a>
+    '''
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
