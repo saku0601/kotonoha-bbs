@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>付箋を投稿</title>
+</head>
+<body>
+    <h2>付箋を投稿</h2>
+    <form method="post">
+        <textarea name="content" rows="5" cols="40" placeholder="付箋の内容を入力してください" required></textarea><br>
+        <button type="submit">投稿</button>
+    </form>
+    <a href="{{ url_for('board') }}">コルクボードへ戻る</a>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul>
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+</body>
+</html>
