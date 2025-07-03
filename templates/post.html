@@ -7,7 +7,7 @@
     <h2>付箋を投稿</h2>
     <form method="post" enctype="multipart/form-data">
         <textarea name="content" rows="5" cols="40" placeholder="付箋の内容を入力してください" required></textarea><br>
-        <input type="file" name="file"><br>
+        <input type="file" name="files" multiple><br>
         <button type="submit">投稿</button>
     </form>
     <a href="{{ url_for('board') }}">コルクボードへ戻る</a>

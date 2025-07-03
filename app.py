@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from models import db, User, Post, Comment
+from models import db, User, Post, Comment, File
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import os
@@ -16,7 +16,7 @@ db.init_app(app)
 
 # アップロード設定
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'docx', 'xlsx'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'docx', 'xlsx', 'mp4', 'mov', 'avi', 'webm'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 if not os.path.exists(UPLOAD_FOLDER):
@@ -66,16 +66,20 @@ def logout():
 def post():
     if request.method == 'POST':
         content = request.form['content']
-        file = request.files.get('file')
-        filename = None
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        if not content.strip() and not filename:
+        files = request.files.getlist('files')
+        if not content.strip() and not files:
             flash('内容またはファイルを入力してください。')
             return redirect(url_for('post'))
-        new_post = Post(content=content, user_id=current_user.id, filename=filename)
+        new_post = Post(content=content, user_id=current_user.id)
         db.session.add(new_post)
+        db.session.commit()
+        for file in files:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                mimetype = file.mimetype
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                new_file = File(filename=filename, mimetype=mimetype, post_id=new_post.id)
+                db.session.add(new_file)
         db.session.commit()
         flash('付箋を投稿しました！')
         return redirect(url_for('board'))

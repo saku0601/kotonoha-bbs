@@ -86,9 +86,15 @@
                 {% else %}
                     {{ post.content | e }}
                 {% endif %}
-                {% if post.filename %}
-                    <a href="{{ url_for('uploaded_file', filename=post.filename) }}" target="_blank">添付ファイルを見る</a>
-                {% endif %}
+                {% for file in post.files %}
+                    {% if file.mimetype.startswith('image') %}
+                        <img src="{{ url_for('uploaded_file', filename=file.filename) }}" style="max-width:180px; display:block; margin-bottom:8px;">
+                    {% elif file.mimetype.startswith('video') %}
+                        <video src="{{ url_for('uploaded_file', filename=file.filename) }}" controls style="max-width:180px; display:block; margin-bottom:8px;"></video>
+                    {% else %}
+                        <a href="{{ url_for('uploaded_file', filename=file.filename) }}" target="_blank">添付ファイルを見る</a>
+                    {% endif %}
+                {% endfor %}
                 <hr>
                 <form method="post" action="{{ url_for('comment', post_id=post.id) }}" style="margin-top: 8px;">
                     <input type="text" name="comment" placeholder="コメントを入力" required
