@@ -201,16 +201,9 @@ def add_user():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        user = User.query.filter_by(username='sakusaku').first()
-        if user:
-            user.password = generate_password_hash('010601')
-            user.is_admin = True
-            db.session.commit()
-            print('sakusakuのパスワードと管理者権限を再設定しました')
-        else:
-            print('sakusakuユーザーが存在しません。管理者画面で追加してください。')
         if not User.query.filter_by(username='admin').first():
             admin_user = User(username='admin', password=generate_password_hash('adminpass'), is_admin=True)
             db.session.add(admin_user)
             db.session.commit()
+            print('管理者ユーザーadminを作成しました')
     app.run(debug=True)
