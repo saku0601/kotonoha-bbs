@@ -1,10 +1,12 @@
+import os
 from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from models import db, User, Post, Comment, File
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-import os
+
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -13,7 +15,6 @@ app.config['SECRET_KEY'] = 'your_secret_key'
 if 'DATABASE_URL' in os.environ:
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL'].replace('postgres://', 'postgresql://')
 else:
-    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'corkboard.sqlite')}"
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
