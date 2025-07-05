@@ -202,8 +202,8 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         if not User.query.filter_by(username='admin').first():
-            admin_user = User(username='admin', password=generate_password_hash('adminpass'), is_admin=True)
-            db.session.add(admin_user)
+            admin = User(username='admin', password=generate_password_hash('adminpass'), is_admin=True)
+            db.session.add(admin)
             db.session.commit()
             print('管理者ユーザーadminを作成しました')
     app.run(debug=True)
