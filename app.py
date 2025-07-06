@@ -206,4 +206,5 @@ if __name__ == '__main__':
             db.session.add(admin)
             db.session.commit()
             print('管理者ユーザーadminを作成しました')
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
