@@ -198,7 +198,8 @@ def add_user():
         return redirect(url_for('add_user'))
     return render_template('add_user.html')
 
-if __name__ == '__main__':
+if os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("DATABASE_URL"):
+    # Railwayや本番環境でのみ実行（ローカル開発時は不要なら条件を調整）
     with app.app_context():
         db.create_all()
         if not User.query.filter_by(username='admin').first():
