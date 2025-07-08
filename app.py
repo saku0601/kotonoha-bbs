@@ -241,14 +241,6 @@ def delete_image(post_id, file_id):
     flash('画像を削除しました。')
     return redirect(url_for('board'))
 
-if os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("DATABASE_URL"):
-    # Railwayや本番環境でのみ実行（ローカル開発時は不要なら条件を調整）
-    with app.app_context():
-        db.create_all()
-        if not User.query.filter_by(username='admin').first():
-            admin = User(username='admin', password=generate_password_hash('adminpass'), is_admin=True)
-            db.session.add(admin)
-            db.session.commit()
-            print('管理者ユーザーadminを作成しました')
+if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
