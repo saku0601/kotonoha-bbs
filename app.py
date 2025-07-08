@@ -146,6 +146,12 @@ def delete_post(post_id):
     if post.user_id != current_user.id and not current_user.is_admin:
         flash('自分の投稿または管理者のみ削除できます。')
         return redirect(url_for('board'))
+    # 画像ファイルも削除
+    for file in post.files:
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        db.session.delete(file)
     db.session.delete(post)
     db.session.commit()
     flash('投稿を削除しました。')
@@ -201,6 +207,7 @@ def add_user():
 @app.route('/edit_post/<int:post_id>/add_image', methods=['POST'])
 @login_required
 def add_image(post_id):
+    print("add_image called", post_id)
     post = Post.query.get_or_404(post_id)
     # 投稿者または管理者のみ許可
     if post.user_id != current_user.id and not current_user.is_admin:
@@ -214,6 +221,8 @@ def add_image(post_id):
         new_file = File(filename=filename, mimetype=mimetype, post_id=post.id)
         db.session.add(new_file)
         db.session.commit()
+        print("file saved:", filename)
+        print("Fileレコード追加:", new_file)
         flash('画像を追加しました。')
     else:
         flash('有効な画像ファイルを選択してください。')

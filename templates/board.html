@@ -30,6 +30,15 @@
     </style>
 </head>
 <body>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul class="flashes">
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
     <header style="text-align:center; margin-top:24px; margin-bottom:24px;">
         <h1 style="
             font-size:2.8em;
