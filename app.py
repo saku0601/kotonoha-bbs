@@ -198,6 +198,49 @@ def add_user():
         return redirect(url_for('add_user'))
     return render_template('add_user.html')
 
+@app.route('/edit_post/<int:post_id>/add_image', methods=['POST'])
+@login_required
+def add_image(post_id):
+    post = Post.query.get_or_404(post_id)
+    # 投稿者または管理者のみ許可
+    if post.user_id != current_user.id and not current_user.is_admin:
+        flash('自分の投稿または管理者のみ画像を追加できます。')
+        return redirect(url_for('board'))
+    file = request.files.get('new_image')
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        mimetype = file.mimetype
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        new_file = File(filename=filename, mimetype=mimetype, post_id=post.id)
+        db.session.add(new_file)
+        db.session.commit()
+        flash('画像を追加しました。')
+    else:
+        flash('有効な画像ファイルを選択してください。')
+    return redirect(url_for('board'))
+
+@app.route('/edit_post/<int:post_id>/delete_image/<int:file_id>', methods=['POST'])
+@login_required
+def delete_image(post_id, file_id):
+    post = Post.query.get_or_404(post_id)
+    file = File.query.get_or_404(file_id)
+    # 投稿者または管理者のみ許可
+    if post.user_id != current_user.id and not current_user.is_admin:
+        flash('自分の投稿または管理者のみ画像を削除できます。')
+        return redirect(url_for('board'))
+    # ファイルが該当投稿に紐づいているか確認
+    if file.post_id != post.id:
+        flash('この画像はこの投稿に紐づいていません。')
+        return redirect(url_for('board'))
+    # サーバー上のファイルも削除
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    db.session.delete(file)
+    db.session.commit()
+    flash('画像を削除しました。')
+    return redirect(url_for('board'))
+
 if os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("DATABASE_URL"):
     # Railwayや本番環境でのみ実行（ローカル開発時は不要なら条件を調整）
     with app.app_context():

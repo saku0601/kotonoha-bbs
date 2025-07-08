@@ -87,13 +87,15 @@
                     {{ post.content | e }}
                 {% endif %}
                 {% for file in post.files %}
-                    {% if file.mimetype.startswith('image') %}
-                        <img src="{{ url_for('uploaded_file', filename=file.filename) }}" style="max-width:180px; display:block; margin-bottom:8px;">
-                    {% elif file.mimetype.startswith('video') %}
-                        <video src="{{ url_for('uploaded_file', filename=file.filename) }}" controls style="max-width:180px; display:block; margin-bottom:8px;"></video>
-                    {% else %}
-                        <a href="{{ url_for('uploaded_file', filename=file.filename) }}" target="_blank">添付ファイルを見る</a>
-                    {% endif %}
+                    <div class="image-container" style="display:inline-block; position:relative;">
+                        <img src="{{ url_for('uploaded_file', filename=file.filename) }}"
+                             style="max-width:180px; display:block; margin-bottom:8px; cursor:pointer;"
+                             onclick="showImageModal(this.src)">
+                        <!-- 画像右脇の透明クリックエリア -->
+                        <div class="image-side-area"
+                             onclick="showImageEditUI({{ post.id }}, {{ file.id }})"
+                             style="position:absolute; right:-30px; top:0; width:30px; height:100%; cursor:pointer;"></div>
+                    </div>
                 {% endfor %}
                 <hr>
                 <form method="post" action="{{ url_for('comment', post_id=post.id) }}" style="margin-top: 8px;">
@@ -163,6 +165,49 @@
             });
         });
     });
+    </script>
+    <!-- 画像拡大用モーダル -->
+    <div id="imageModal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); justify-content:center; align-items:center;">
+        <img id="modalImg" src="" style="max-width:90vw; max-height:90vh;">
+    </div>
+
+    <!-- 画像編集UI（追加/削除）用モーダル -->
+    <div id="imageEditUI" style="display:none; position:fixed; z-index:1100; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4); justify-content:center; align-items:center;">
+        <div style="background:#fff; padding:24px; border-radius:12px; min-width:240px; text-align:center;">
+            <h3>画像の編集</h3>
+            <form id="addImageForm" enctype="multipart/form-data" method="post">
+                <input type="file" name="new_image" accept="image/*"><br>
+                <button type="submit">画像を追加</button>
+            </form>
+            <form id="deleteImageForm" method="post" style="margin-top:12px;">
+                <button type="submit" style="color:#c00;">この画像を削除</button>
+            </form>
+            <button onclick="closeImageEditUI()" style="margin-top:16px;">閉じる</button>
+        </div>
+    </div>
+
+    <script>
+    function showImageModal(src) {
+        document.getElementById('modalImg').src = src;
+        document.getElementById('imageModal').style.display = 'flex';
+    }
+    document.getElementById('imageModal').onclick = function() {
+        this.style.display = 'none';
+    };
+
+    let currentPostId = null;
+    let currentFileId = null;
+    function showImageEditUI(postId, fileId) {
+        currentPostId = postId;
+        currentFileId = fileId;
+        document.getElementById('imageEditUI').style.display = 'flex';
+        // フォームのactionを動的にセット
+        document.getElementById('addImageForm').action = '/edit_post/' + postId + '/add_image';
+        document.getElementById('deleteImageForm').action = '/edit_post/' + postId + '/delete_image/' + fileId;
+    }
+    function closeImageEditUI() {
+        document.getElementById('imageEditUI').style.display = 'none';
+    }
     </script>
 </body>
 </html>
