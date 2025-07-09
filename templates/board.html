@@ -98,19 +98,30 @@
                 <p>ファイル数: {{ post.files|length }}</p>
                 {% if post.files %}
                     <div style="margin: 8px 0;">
+                        {% set image_count = 0 %}
+                        {% set total_images = 0 %}
                         {% for file in post.files %}
                             {% if file.mimetype and file.mimetype.startswith('image/') %}
-                                <img src="{{ url_for('uploaded_file', filename=file.filename) }}" 
-                                     alt="{{ file.filename }}" 
-                                     style="max-width: 100%; max-height: 150px; cursor: pointer; margin: 2px;"
-                                     onclick="showImageModal('{{ url_for('uploaded_file', filename=file.filename) }}')">
-                                {% if post.user_id == current_user.id or current_user.is_admin %}
-                                    <div style="text-align: center; margin-top: 4px;">
-                                        <button onclick="showImageEditUI({{ post.id }}, {{ file.id }})" 
-                                                style="background: #ff6b6b; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 10px; cursor: pointer;">
-                                            編集
-                                        </button>
-                                    </div>
+                                {% set total_images = total_images + 1 %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% for file in post.files %}
+                            {% if file.mimetype and file.mimetype.startswith('image/') %}
+                                {% if image_count < 3 %}
+                                    <img src="{{ url_for('uploaded_file', filename=file.filename) }}" 
+                                         alt="{{ file.filename }}" 
+                                         style="max-width: 100%; max-height: 120px; cursor: pointer; margin: 2px; border-radius: 4px;"
+                                         onclick="showImageModal('{{ url_for('uploaded_file', filename=file.filename) }}')">
+                                    {% if post.user_id == current_user.id or current_user.is_admin %}
+                                        <div style="text-align: center; margin-top: 2px; margin-bottom: 4px;">
+                                            <button onclick="showImageEditUI({{ post.id }}, {{ file.id }})" 
+                                                    style="background: #ff6b6b; color: white; border: none; border-radius: 3px; padding: 1px 4px; font-size: 9px; cursor: pointer;">
+                                                編集
+                                            </button>
+                                        </div>
+                                    {% endif %}
+                                    {% set image_count = image_count + 1 %}
                                 {% endif %}
                             {% else %}
                                 <div style="margin: 2px; padding: 4px; background: #f0f0f0; border-radius: 4px; font-size: 12px;">
@@ -118,6 +129,15 @@
                                 </div>
                             {% endif %}
                         {% endfor %}
+                        
+                        {% if total_images > 3 %}
+                            <div style="text-align: center; margin-top: 4px;">
+                                <span style="background: #4b2e09; color: white; padding: 2px 6px; border-radius: 8px; font-size: 11px; cursor: pointer;" 
+                                      onclick="showAllImages({{ post.id }})">
+                                    +{{ total_images - 3 }}枚
+                                </span>
+                            </div>
+                        {% endif %}
                     </div>
                 {% else %}
                     <div onclick="showImageAddUI({{ post.id }})"
@@ -225,6 +245,19 @@
         </div>
     </div>
 
+    <!-- すべての画像表示用モーダル -->
+    <div id="allImagesModal" style="display:none; position:fixed; z-index:1200; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); overflow-y:auto;">
+        <div style="background:#fff; margin:20px auto; max-width:800px; padding:20px; border-radius:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3>すべての画像</h3>
+                <button onclick="closeAllImagesModal()" style="background:#ff6b6b; color:white; border:none; border-radius:4px; padding:8px 12px; cursor:pointer;">閉じる</button>
+            </div>
+            <div id="allImagesContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px;">
+                <!-- 画像がここに動的に追加されます -->
+            </div>
+        </div>
+    </div>
+
     <script>
     function showImageModal(src) {
         document.getElementById('modalImg').src = src;
@@ -254,6 +287,43 @@
     }
     function closeImageAddUI() {
         document.getElementById('imageAddUI').style.display = 'none';
+    }
+
+    function showAllImages(postId) {
+        // サーバーから画像データを取得
+        fetch(`/api/post/${postId}/images`)
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('allImagesContainer');
+                container.innerHTML = '';
+                
+                data.images.forEach(img => {
+                    const imgDiv = document.createElement('div');
+                    imgDiv.style.textAlign = 'center';
+                    
+                    const fullImg = document.createElement('img');
+                    fullImg.src = img.url;
+                    fullImg.alt = img.filename;
+                    fullImg.style.maxWidth = '100%';
+                    fullImg.style.maxHeight = '300px';
+                    fullImg.style.cursor = 'pointer';
+                    fullImg.style.borderRadius = '8px';
+                    fullImg.onclick = () => showImageModal(img.url);
+                    
+                    imgDiv.appendChild(fullImg);
+                    container.appendChild(imgDiv);
+                });
+                
+                document.getElementById('allImagesModal').style.display = 'block';
+            })
+            .catch(error => {
+                console.error('画像の取得に失敗しました:', error);
+                alert('画像の取得に失敗しました。');
+            });
+    }
+    
+    function closeAllImagesModal() {
+        document.getElementById('allImagesModal').style.display = 'none';
     }
     </script>
 </body>

@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory
+from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from models import db, User, Post, Comment, File
@@ -249,6 +249,20 @@ def delete_image(post_id, file_id):
     db.session.commit()
     flash('画像を削除しました。')
     return redirect(url_for('board'))
+
+@app.route('/api/post/<int:post_id>/images')
+@login_required
+def get_post_images(post_id):
+    post = Post.query.get_or_404(post_id)
+    images = []
+    for file in post.files:
+        if file.mimetype and file.mimetype.startswith('image/'):
+            images.append({
+                'id': file.id,
+                'filename': file.filename,
+                'url': url_for('uploaded_file', filename=file.filename)
+            })
+    return jsonify({'images': images})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
