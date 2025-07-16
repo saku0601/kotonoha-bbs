@@ -287,6 +287,33 @@ def post_detail(post_id):
         'files': files
     })
 
+@app.route('/admin/files')
+@login_required
+def admin_files():
+    if not current_user.is_admin:
+        flash('管理者のみアクセス可能です')
+        return redirect(url_for('board'))
+    
+    import os
+    files = []
+    upload_dir = app.config['UPLOAD_FOLDER']
+    if os.path.exists(upload_dir):
+        for filename in os.listdir(upload_dir):
+            file_path = os.path.join(upload_dir, filename)
+            if os.path.isfile(file_path):
+                # ファイルサイズをMB単位で表示
+                size_mb = round(os.path.getsize(file_path) / (1024 * 1024), 2)
+                files.append({
+                    'name': filename,
+                    'size_mb': size_mb,
+                    'url': url_for('uploaded_file', filename=filename),
+                    'exists': True
+                })
+    else:
+        flash('uploadsフォルダが存在しません')
+    
+    return render_template('admin_files.html', files=files)
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
