@@ -2,12 +2,33 @@
 <html>
 <head>
     <title>付箋を投稿</title>
+    <style>
+        #progress-container {
+            width: 100%;
+            background: #eee;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: none;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 18px;
+            background: #4b2e09;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            transition: width 0.2s;
+        }
+    </style>
 </head>
 <body>
     <h2>付箋を投稿</h2>
-    <form method="post" enctype="multipart/form-data">
+    <form id="postForm" method="post" enctype="multipart/form-data">
         <textarea name="content" rows="5" cols="40" placeholder="付箋の内容を入力してください" required></textarea><br>
-        <input type="file" name="files" multiple><br>
+        <input type="file" name="files" id="fileInput" multiple><br>
+        <div id="progress-container">
+            <div id="progress-bar">0%</div>
+        </div>
         <button type="submit">投稿</button>
     </form>
     <a href="{{ url_for('board') }}">コルクボードへ戻る</a>
@@ -20,5 +41,82 @@
         </ul>
       {% endif %}
     {% endwith %}
+    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+    <script>
+    // 画像リサイズ・圧縮設定
+    const imageOptions = {
+        maxWidthOrHeight: 1280, // 最大幅・高さ
+        maxSizeMB: 1, // 目安の最大サイズ（MB）
+        useWebWorker: true
+    };
+
+    // 動画圧縮（簡易）
+    async function compressVideo(file) {
+        // ブラウザでの本格的な動画圧縮は難しいため、ここではそのまま返す
+        // もしffmpeg.wasm等を使う場合はここで処理
+        return file;
+    }
+
+    document.getElementById('postForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const form = this;
+        const fileInput = document.getElementById('fileInput');
+        const files = Array.from(fileInput.files);
+        const formData = new FormData();
+        formData.append('content', form.content.value);
+
+        // 画像・動画の圧縮処理
+        for (let file of files) {
+            if (file.type.startsWith('image/')) {
+                try {
+                    const compressed = await imageCompression(file, imageOptions);
+                    formData.append('files', compressed, file.name);
+                } catch (err) {
+                    formData.append('files', file, file.name); // 圧縮失敗時は元画像
+                }
+            } else if (file.type.startsWith('video/')) {
+                const compressed = await compressVideo(file);
+                formData.append('files', compressed, file.name);
+            } else {
+                formData.append('files', file, file.name);
+            }
+        }
+
+        // プログレスバー表示
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+
+        // XMLHttpRequestでアップロード
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '', true);
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percent + '%';
+                progressBar.textContent = percent + '%';
+            }
+        };
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                progressBar.style.width = '100%';
+                progressBar.textContent = '完了';
+                window.location.href = "{{ url_for('board') }}";
+            } else {
+                progressBar.style.background = '#c00';
+                progressBar.textContent = 'エラー';
+                alert('アップロードに失敗しました');
+            }
+        };
+        xhr.onerror = function() {
+            progressBar.style.background = '#c00';
+            progressBar.textContent = 'エラー';
+            alert('アップロードに失敗しました');
+        };
+        xhr.send(formData);
+    });
+    </script>
 </body>
 </html>

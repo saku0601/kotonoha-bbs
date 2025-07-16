@@ -66,7 +66,9 @@
         {% set colors = ['#fff8b0', '#ffd1dc', '#b0e0ff', '#c1ffc1', '#ffe4b0'] %}
         {% for post in posts %}
             {% set angle = (-5 + loop.index0 * 3) % 10 - 5 %}
-            <div class="post"
+            {% set has_files = post.files|length > 0 %}
+            <div class="post clickable-post"
+                 data-post-id="{{ post.id }}"
                  style="background: {{ colors[loop.index0 % colors|length] }};
                         border: 2px solid #4b2e09;
                         border-radius: 12px;
@@ -79,69 +81,11 @@
                         position: relative;
                         transform: rotate({{ angle }}deg);">
                 <img src="{{ url_for('static', filename='pin.png') }}" style="width:32px; position:absolute; top:-15px; left:50%; transform:translateX(-50%); z-index:2;">
-                {% if post.user_id == current_user.id or current_user.is_admin %}
-                    <form method="post" action="{{ url_for('delete_post', post_id=post.id) }}" style="position:absolute; top:8px; right:8px; z-index:3;">
-                        <button type="submit" onclick="return confirm('本当に削除しますか？');" style="background:transparent; border:none; color:#c00; font-weight:bold; font-size:18px; cursor:pointer;">×</button>
-                    </form>
-                {% endif %}
                 <strong>{{ user_dict.get(post.user_id, '不明') }}さん</strong><br>
-                {% if post.user_id == current_user.id or current_user.is_admin %}
-                    <span class="editable-content" data-post-id="{{ post.id }}">{{ post.content | e }}</span>
-                    <form class="edit-form" data-post-id="{{ post.id }}" method="post" action="{{ url_for('edit_post', post_id=post.id) }}" style="display:none;">
-                        <textarea name="content" rows="3" cols="20">{{ post.content }}</textarea>
-                        <button type="submit">保存</button>
-                        <button type="button" class="cancel-edit">キャンセル</button>
-                    </form>
-                {% else %}
-                    {{ post.content | e }}
-                {% endif %}
-                <p>ファイル数: {{ post.files|length }}</p>
-                {% if post.files %}
-                    <div style="margin: 8px 0;">
-                        {% set image_count = 0 %}
-                        {% set total_images = 0 %}
-                        {% for file in post.files %}
-                            {% if file.mimetype and file.mimetype.startswith('image/') %}
-                                {% set total_images = total_images + 1 %}
-                            {% endif %}
-                        {% endfor %}
-                        
-                        {% for file in post.files %}
-                            {% if file.mimetype and file.mimetype.startswith('image/') %}
-                                {% if image_count < 3 %}
-                                    <img src="{{ url_for('uploaded_file', filename=file.filename) }}" 
-                                         alt="{{ file.filename }}" 
-                                         style="max-width: 100%; max-height: 120px; cursor: pointer; margin: 2px; border-radius: 4px;"
-                                         onclick="showImageModal('{{ url_for('uploaded_file', filename=file.filename) }}')">
-                                    {% if post.user_id == current_user.id or current_user.is_admin %}
-                                        <div style="text-align: center; margin-top: 2px; margin-bottom: 4px;">
-                                            <button onclick="showImageEditUI({{ post.id }}, {{ file.id }})" 
-                                                    style="background: #ff6b6b; color: white; border: none; border-radius: 3px; padding: 1px 4px; font-size: 9px; cursor: pointer;">
-                                                編集
-                                            </button>
-                                        </div>
-                                    {% endif %}
-                                    {% set image_count = image_count + 1 %}
-                                {% endif %}
-                            {% else %}
-                                <div style="margin: 2px; padding: 4px; background: #f0f0f0; border-radius: 4px; font-size: 12px;">
-                                    📎 {{ file.filename }}
-                                </div>
-                            {% endif %}
-                        {% endfor %}
-                        
-                        {% if total_images > 3 %}
-                            <div style="text-align: center; margin-top: 4px;">
-                                <span style="background: #4b2e09; color: white; padding: 2px 6px; border-radius: 8px; font-size: 11px; cursor: pointer;" 
-                                      onclick="showAllImages({{ post.id }})">
-                                    +{{ total_images - 3 }}枚
-                                </span>
-                            </div>
-                        {% endif %}
-                    </div>
-                {% else %}
-                    <div onclick="showImageAddUI({{ post.id }})"
-                         style="position:relative; width:100%; height:24px; margin-bottom:-24px; z-index:10; cursor:pointer;">
+                {{ post.content | e }}
+                {% if has_files %}
+                    <div style="margin-top:8px; font-size:1.1em; color:#4b2e09;">
+                        <span style="font-size:1.2em;">📎</span> 添付ファイルあり
                     </div>
                 {% endif %}
                 <hr>
@@ -258,6 +202,17 @@
         </div>
     </div>
 
+    <!-- 拡大モーダル -->
+    <div id="postModal" style="display:none; position:fixed; z-index:2000; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;">
+        <div id="modalContent" style="background:#fff8b0; border:2px solid #4b2e09; border-radius:16px; box-shadow:8px 8px 32px #4b2e09; padding:32px; min-width:320px; max-width:90vw; max-height:90vh; overflow:auto; position:relative;">
+            <button onclick="closePostModal()" style="position:absolute; top:12px; right:12px; background:#ff6b6b; color:white; border:none; border-radius:8px; padding:4px 12px; font-size:1.2em; cursor:pointer;">×</button>
+            <div id="modalPin" style="text-align:center; margin-bottom:12px;"></div>
+            <div id="modalUser" style="font-weight:bold; margin-bottom:8px;"></div>
+            <div id="modalContentText" style="margin-bottom:16px;"></div>
+            <div id="modalFiles"></div>
+        </div>
+    </div>
+
     <script>
     function showImageModal(src) {
         document.getElementById('modalImg').src = src;
@@ -324,6 +279,64 @@
     
     function closeAllImagesModal() {
         document.getElementById('allImagesModal').style.display = 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.clickable-post').forEach(function(postDiv) {
+            postDiv.addEventListener('click', function(e) {
+                // コメント欄やボタンをクリックした場合は無視
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.tagName === 'FORM' || e.target.closest('form')) return;
+                const postId = this.getAttribute('data-post-id');
+                fetch(`/api/post/${postId}/detail`)
+                    .then(res => res.json())
+                    .then(data => showPostModal(data));
+            });
+        });
+    });
+
+    function showPostModal(data) {
+        document.getElementById('modalPin').innerHTML = '<img src="/static/pin.png" style="width:40px;">';
+        document.getElementById('modalUser').textContent = data.user;
+        document.getElementById('modalContentText').textContent = data.content;
+        // 添付ファイル
+        const filesDiv = document.getElementById('modalFiles');
+        filesDiv.innerHTML = '';
+        if (data.files.length > 0) {
+            data.files.forEach(file => {
+                if (file.mimetype.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = file.url;
+                    img.alt = file.filename;
+                    img.style.maxWidth = '300px';
+                    img.style.maxHeight = '200px';
+                    img.style.margin = '8px';
+                    img.style.borderRadius = '8px';
+                    filesDiv.appendChild(img);
+                } else if (file.mimetype.startsWith('video/')) {
+                    const video = document.createElement('video');
+                    video.src = file.url;
+                    video.controls = true;
+                    video.style.maxWidth = '300px';
+                    video.style.maxHeight = '200px';
+                    video.style.margin = '8px';
+                    filesDiv.appendChild(video);
+                } else {
+                    const a = document.createElement('a');
+                    a.href = file.url;
+                    a.textContent = '📎 ' + file.filename;
+                    a.style.display = 'block';
+                    a.style.margin = '8px';
+                    a.target = '_blank';
+                    filesDiv.appendChild(a);
+                }
+            });
+        } else {
+            filesDiv.innerHTML = '<span style="color:#888;">添付ファイルはありません</span>';
+        }
+        document.getElementById('postModal').style.display = 'flex';
+    }
+    function closePostModal() {
+        document.getElementById('postModal').style.display = 'none';
     }
     </script>
 </body>

@@ -146,12 +146,16 @@ def delete_post(post_id):
     if post.user_id != current_user.id and not current_user.is_admin:
         flash('自分の投稿または管理者のみ削除できます。')
         return redirect(url_for('board'))
-    # 画像ファイルも削除
-    for file in post.files:
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        db.session.delete(file)
+    # 画像ファイルも削除（例外処理付きで安全に）
+    files = getattr(post, 'files', [])
+    for file in files:
+        try:
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            db.session.delete(file)
+        except Exception as e:
+            print(f"ファイル削除エラー: {e}")
     db.session.delete(post)
     db.session.commit()
     flash('投稿を削除しました。')
@@ -263,6 +267,25 @@ def get_post_images(post_id):
                 'url': url_for('uploaded_file', filename=file.filename)
             })
     return jsonify({'images': images})
+
+@app.route('/api/post/<int:post_id>/detail')
+@login_required
+def post_detail(post_id):
+    post = Post.query.get_or_404(post_id)
+    user = User.query.get(post.user_id)
+    files = []
+    for file in post.files:
+        files.append({
+            'filename': file.filename,
+            'mimetype': file.mimetype or '',
+            'url': url_for('uploaded_file', filename=file.filename)
+        })
+    return jsonify({
+        'id': post.id,
+        'user': user.username if user else '不明',
+        'content': post.content,
+        'files': files
+    })
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
