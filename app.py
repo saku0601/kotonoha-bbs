@@ -21,7 +21,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
 # アップロード設定
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+UPLOAD_FOLDER = os.environ.get('VOLUME_PATH', os.path.join(BASE_DIR, 'uploads'))
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'docx', 'xlsx', 'mp4', 'mov', 'avi', 'webm'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
