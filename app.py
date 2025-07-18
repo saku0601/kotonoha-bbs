@@ -53,13 +53,48 @@ firebase_initialized = init_firebase()
 # アプリケーション初期化
 def init_app():
     with app.app_context():
-        db.create_all()
-        # 管理者ユーザーが存在しない場合は作成
-        if not User.query.filter_by(username='admin').first():
-            admin_user = User(username='admin', password=generate_password_hash('admin'), is_admin=True)
-            db.session.add(admin_user)
-            db.session.commit()
-            print("管理者ユーザーを作成しました: admin/admin")
+        try:
+            # 既存のテーブル構造を確認
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            existing_tables = inspector.get_table_names()
+            
+            # fileテーブルが存在する場合、urlカラムの存在を確認
+            if 'file' in existing_tables:
+                columns = [col['name'] for col in inspector.get_columns('file')]
+                if 'url' not in columns:
+                    print("fileテーブルにurlカラムが存在しません。テーブルを再作成します。")
+                    db.drop_all()
+                    db.create_all()
+                    print("データベーステーブルを再作成しました")
+                else:
+                    print("データベーステーブルは正常です")
+            else:
+                db.create_all()
+                print("データベーステーブルを作成しました")
+            
+            # 管理者ユーザーが存在しない場合は作成
+            if not User.query.filter_by(username='admin').first():
+                admin_user = User(username='admin', password=generate_password_hash('admin'), is_admin=True)
+                db.session.add(admin_user)
+                db.session.commit()
+                print("管理者ユーザーを作成しました: admin/admin")
+                
+        except Exception as e:
+            print(f"データベース初期化エラー: {e}")
+            # エラーが発生した場合は強制的に再作成
+            try:
+                db.drop_all()
+                db.create_all()
+                print("エラーによりデータベースを強制再作成しました")
+                
+                # 管理者ユーザーを作成
+                admin_user = User(username='admin', password=generate_password_hash('admin'), is_admin=True)
+                db.session.add(admin_user)
+                db.session.commit()
+                print("管理者ユーザーを作成しました: admin/admin")
+            except Exception as e2:
+                print(f"強制再作成でもエラー: {e2}")
 
 # 初期化実行
 init_app()
