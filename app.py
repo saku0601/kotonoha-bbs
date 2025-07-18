@@ -27,10 +27,9 @@ db.init_app(app)
 def init_firebase():
     try:
         # 環境変数からFirebase設定を読み込み
-        firebase_config = os.environ.get('FIREBASE_CONFIG')
         service_account = os.environ.get('FIREBASE_SERVICE_ACCOUNT')
         
-        if firebase_config and service_account:
+        if service_account:
             # サービスアカウントキーをJSONとして解析
             service_account_info = json.loads(service_account)
             
@@ -39,13 +38,31 @@ def init_firebase():
             firebase_admin.initialize_app(cred, {
                 'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET', 'kotonoha-bbs.firebasestorage.app')
             })
+            print("Firebase初期化成功")
             return True
+        else:
+            print("FIREBASE_SERVICE_ACCOUNT環境変数が設定されていません")
+            return False
     except Exception as e:
         print(f"Firebase初期化エラー: {e}")
         return False
 
 # Firebase初期化
 firebase_initialized = init_firebase()
+
+# アプリケーション初期化
+def init_app():
+    with app.app_context():
+        db.create_all()
+        # 管理者ユーザーが存在しない場合は作成
+        if not User.query.filter_by(username='admin').first():
+            admin_user = User(username='admin', password=generate_password_hash('admin'), is_admin=True)
+            db.session.add(admin_user)
+            db.session.commit()
+            print("管理者ユーザーを作成しました: admin/admin")
+
+# 初期化実行
+init_app()
 
 # アップロード設定（ローカル用のフォールバック）
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
@@ -61,6 +78,7 @@ def allowed_file(filename):
 def upload_to_firebase(file, filename):
     """Firebase Storageにファイルをアップロード"""
     if not firebase_initialized:
+        print("Firebaseが初期化されていないため、ローカル保存にフォールバックします")
         return None
     
     try:
@@ -203,9 +221,15 @@ def delete_post(post_id):
             # ファイルがFirebaseかローカルかによって処理を分岐
             if file.url and file.url.startswith('https://firebasestorage.googleapis.com/v0/b/'):
                 # Firebaseから削除
-                bucket = storage.bucket()
-                blob = bucket.blob(f"uploads/{file.filename}")
-                blob.delete()
+                if firebase_initialized:
+                    try:
+                        bucket = storage.bucket()
+                        blob = bucket.blob(f"uploads/{file.filename}")
+                        blob.delete()
+                    except Exception as e:
+                        print(f"Firebase削除エラー: {e}")
+                else:
+                    print("Firebaseが初期化されていないため、Firebaseからの削除をスキップします")
             else:
                 # ローカルから削除
                 file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
@@ -310,9 +334,15 @@ def delete_image(post_id, file_id):
     # サーバー上のファイルも削除
     if file.url and file.url.startswith('https://firebasestorage.googleapis.com/v0/b/'):
         # Firebaseから削除
-        bucket = storage.bucket()
-        blob = bucket.blob(f"uploads/{file.filename}")
-        blob.delete()
+        if firebase_initialized:
+            try:
+                bucket = storage.bucket()
+                blob = bucket.blob(f"uploads/{file.filename}")
+                blob.delete()
+            except Exception as e:
+                print(f"Firebase削除エラー: {e}")
+        else:
+            print("Firebaseが初期化されていないため、Firebaseからの削除をスキップします")
     else:
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         if os.path.exists(file_path):
@@ -383,5 +413,14 @@ def admin_files():
     return render_template('admin_files.html', files=files)
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+        # 管理者ユーザーが存在しない場合は作成
+        if not User.query.filter_by(username='admin').first():
+            admin_user = User(username='admin', password=generate_password_hash('admin'), is_admin=True)
+            db.session.add(admin_user)
+            db.session.commit()
+            print("管理者ユーザーを作成しました: admin/admin")
+    
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
