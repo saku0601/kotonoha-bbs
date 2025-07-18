@@ -26,4 +26,5 @@ class File(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
     mimetype = db.Column(db.String(50))
+    url = db.Column(db.String(500))  # Firebase Storage URL
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)

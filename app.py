@@ -1,10 +1,13 @@
 import os
+import json
 from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from models import db, User, Post, Comment, File
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+import firebase_admin
+from firebase_admin import credentials, storage
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -20,8 +23,32 @@ else:
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
-# アップロード設定
-UPLOAD_FOLDER = os.environ.get('VOLUME_PATH', os.path.join(BASE_DIR, 'uploads'))
+# Firebase設定
+def init_firebase():
+    try:
+        # 環境変数からFirebase設定を読み込み
+        firebase_config = os.environ.get('FIREBASE_CONFIG')
+        service_account = os.environ.get('FIREBASE_SERVICE_ACCOUNT')
+        
+        if firebase_config and service_account:
+            # サービスアカウントキーをJSONとして解析
+            service_account_info = json.loads(service_account)
+            
+            # Firebase Admin SDKを初期化
+            cred = credentials.Certificate(service_account_info)
+            firebase_admin.initialize_app(cred, {
+                'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET', 'kotonoha-bbs.firebasestorage.app')
+            })
+            return True
+    except Exception as e:
+        print(f"Firebase初期化エラー: {e}")
+        return False
+
+# Firebase初期化
+firebase_initialized = init_firebase()
+
+# アップロード設定（ローカル用のフォールバック）
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'docx', 'xlsx', 'mp4', 'mov', 'avi', 'webm'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -30,6 +57,27 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def upload_to_firebase(file, filename):
+    """Firebase Storageにファイルをアップロード"""
+    if not firebase_initialized:
+        return None
+    
+    try:
+        bucket = storage.bucket()
+        blob = bucket.blob(f"uploads/{filename}")
+        blob.upload_from_file(file)
+        blob.make_public()
+        return blob.public_url
+    except Exception as e:
+        print(f"Firebaseアップロードエラー: {e}")
+        return None
+
+def save_file_locally(file, filename):
+    """ローカルにファイルを保存（フォールバック）"""
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(file_path)
+    return filename
 
 login_manager = LoginManager()
 login_manager.login_view = 'login'
@@ -86,9 +134,11 @@ def post():
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
                 mimetype = file.mimetype
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                new_file = File(filename=filename, mimetype=mimetype, post_id=new_post.id)
-                db.session.add(new_file)
+                # ローカルに保存またはFirebaseにアップロード
+                file_url = upload_to_firebase(file, filename) or save_file_locally(file, filename)
+                if file_url:
+                    new_file = File(filename=filename, mimetype=mimetype, post_id=new_post.id, url=file_url)
+                    db.session.add(new_file)
         db.session.commit()
         flash('付箋を投稿しました！')
         return redirect(url_for('board'))
@@ -150,9 +200,17 @@ def delete_post(post_id):
     files = getattr(post, 'files', [])
     for file in files:
         try:
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            if os.path.exists(file_path):
-                os.remove(file_path)
+            # ファイルがFirebaseかローカルかによって処理を分岐
+            if file.url and file.url.startswith('https://firebasestorage.googleapis.com/v0/b/'):
+                # Firebaseから削除
+                bucket = storage.bucket()
+                blob = bucket.blob(f"uploads/{file.filename}")
+                blob.delete()
+            else:
+                # ローカルから削除
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
             db.session.delete(file)
         except Exception as e:
             print(f"ファイル削除エラー: {e}")
@@ -221,13 +279,17 @@ def add_image(post_id):
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         mimetype = file.mimetype
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        new_file = File(filename=filename, mimetype=mimetype, post_id=post.id)
-        db.session.add(new_file)
-        db.session.commit()
-        print("file saved:", filename)
-        print("Fileレコード追加:", new_file)
-        flash('画像を追加しました。')
+        # ローカルに保存またはFirebaseにアップロード
+        file_url = upload_to_firebase(file, filename) or save_file_locally(file, filename)
+        if file_url:
+            new_file = File(filename=filename, mimetype=mimetype, post_id=post.id, url=file_url)
+            db.session.add(new_file)
+            db.session.commit()
+            print("file saved:", filename)
+            print("Fileレコード追加:", new_file)
+            flash('画像を追加しました。')
+        else:
+            flash('画像のアップロードに失敗しました。')
     else:
         flash('有効な画像ファイルを選択してください。')
     return redirect(url_for('board'))
@@ -246,9 +308,15 @@ def delete_image(post_id, file_id):
         flash('この画像はこの投稿に紐づいていません。')
         return redirect(url_for('board'))
     # サーバー上のファイルも削除
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-    if os.path.exists(file_path):
-        os.remove(file_path)
+    if file.url and file.url.startswith('https://firebasestorage.googleapis.com/v0/b/'):
+        # Firebaseから削除
+        bucket = storage.bucket()
+        blob = bucket.blob(f"uploads/{file.filename}")
+        blob.delete()
+    else:
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
     db.session.delete(file)
     db.session.commit()
     flash('画像を削除しました。')
@@ -264,7 +332,7 @@ def get_post_images(post_id):
             images.append({
                 'id': file.id,
                 'filename': file.filename,
-                'url': url_for('uploaded_file', filename=file.filename)
+                'url': file.url if file.url else url_for('uploaded_file', filename=file.filename)
             })
     return jsonify({'images': images})
 
@@ -278,7 +346,7 @@ def post_detail(post_id):
         files.append({
             'filename': file.filename,
             'mimetype': file.mimetype or '',
-            'url': url_for('uploaded_file', filename=file.filename)
+            'url': file.url if file.url else url_for('uploaded_file', filename=file.filename)
         })
     return jsonify({
         'id': post.id,
