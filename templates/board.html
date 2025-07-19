@@ -85,19 +85,8 @@
                 <strong>{{ user_dict.get(post.user_id, '不明') }}さん</strong><br>
                 {{ post.content | e }}
                 {% if has_files %}
-                    <div style="margin-top:8px;">
-                        {% for file in post.files %}
-                            {% if file.mimetype and file.mimetype.startswith('image/') %}
-                                <img src="{{ file.url if file.url else url_for('uploaded_file', filename=file.filename) }}" 
-                                     alt="{{ file.filename }}" 
-                                     style="max-width: 100%; max-height: 120px; border-radius: 4px; margin: 4px 0; cursor: pointer;"
-                                     onclick="showImageModal('{{ file.url if file.url else url_for('uploaded_file', filename=file.filename) }}')">
-                            {% else %}
-                                <div style="font-size:1.1em; color:#4b2e09;">
-                                    <span style="font-size:1.2em;">📎</span> {{ file.filename }}
-                                </div>
-                            {% endif %}
-                        {% endfor %}
+                    <div style="margin-top:8px; font-size:1.1em; color:#4b2e09;">
+                        <span style="font-size:1.2em;">📎</span> 添付ファイルあり
                     </div>
                 {% endif %}
                 <hr>
@@ -299,23 +288,34 @@
                 // コメント欄やボタンをクリックした場合は無視
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.tagName === 'FORM' || e.target.closest('form')) return;
                 const postId = this.getAttribute('data-post-id');
+                console.log('Post clicked:', postId);
                 fetch(`/api/post/${postId}/detail`)
                     .then(res => res.json())
-                    .then(data => showPostModal(data));
+                    .then(data => {
+                        console.log('API response:', data);
+                        showPostModal(data);
+                    })
+                    .catch(error => {
+                        console.error('API error:', error);
+                        alert('データの取得に失敗しました。');
+                    });
             });
         });
     });
 
     function showPostModal(data) {
+        console.log('Showing modal for data:', data);
         document.getElementById('modalPin').innerHTML = '<img src="/static/pin.png" style="width:40px;">';
         document.getElementById('modalUser').textContent = data.user;
         document.getElementById('modalContentText').textContent = data.content;
         // 添付ファイル
         const filesDiv = document.getElementById('modalFiles');
         filesDiv.innerHTML = '';
-        if (data.files.length > 0) {
+        if (data.files && data.files.length > 0) {
+            console.log('Files found:', data.files);
             data.files.forEach(file => {
-                if (file.mimetype.startsWith('image/')) {
+                console.log('Processing file:', file);
+                if (file.mimetype && file.mimetype.startsWith('image/')) {
                     const img = document.createElement('img');
                     img.src = file.url;
                     img.alt = file.filename;
@@ -323,8 +323,20 @@
                     img.style.maxHeight = '200px';
                     img.style.margin = '8px';
                     img.style.borderRadius = '8px';
+                    img.onerror = function() {
+                        console.error('Image failed to load:', file.url);
+                        this.style.display = 'none';
+                        const errorDiv = document.createElement('div');
+                        errorDiv.textContent = '画像の読み込みに失敗しました: ' + file.filename;
+                        errorDiv.style.color = 'red';
+                        errorDiv.style.margin = '8px';
+                        filesDiv.appendChild(errorDiv);
+                    };
+                    img.onload = function() {
+                        console.log('Image loaded successfully:', file.url);
+                    };
                     filesDiv.appendChild(img);
-                } else if (file.mimetype.startsWith('video/')) {
+                } else if (file.mimetype && file.mimetype.startsWith('video/')) {
                     const video = document.createElement('video');
                     video.src = file.url;
                     video.controls = true;
@@ -343,6 +355,7 @@
                 }
             });
         } else {
+            console.log('No files found');
             filesDiv.innerHTML = '<span style="color:#888;">添付ファイルはありません</span>';
         }
         document.getElementById('postModal').style.display = 'flex';

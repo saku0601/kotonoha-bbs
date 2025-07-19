@@ -408,17 +408,22 @@ def post_detail(post_id):
     user = User.query.get(post.user_id)
     files = []
     for file in post.files:
+        file_url = file.url if file.url else url_for('uploaded_file', filename=file.filename)
         files.append({
             'filename': file.filename,
             'mimetype': file.mimetype or '',
-            'url': file.url if file.url else url_for('uploaded_file', filename=file.filename)
+            'url': file_url
         })
-    return jsonify({
+        print(f"File: {file.filename}, URL: {file_url}, MIME: {file.mimetype}")
+    
+    result = {
         'id': post.id,
         'user': user.username if user else '不明',
         'content': post.content,
         'files': files
-    })
+    }
+    print(f"API Response: {result}")
+    return jsonify(result)
 
 @app.route('/admin/files')
 @login_required
