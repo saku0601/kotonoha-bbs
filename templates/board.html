@@ -82,6 +82,12 @@
                         position: relative;
                         transform: rotate({{ angle }}deg);">
                 <img src="{{ url_for('static', filename='pin.png') }}" style="width:32px; position:absolute; top:-15px; left:50%; transform:translateX(-50%); z-index:2;">
+                {% if current_user.id == post.user_id or current_user.is_admin %}
+                    <form method="post" action="{{ url_for('delete_post', post_id=post.id) }}" style="position:absolute; top:8px; right:8px; z-index:3;">
+                        <button type="submit" onclick="return confirm('本当に削除しますか？')" 
+                                style="background:#ff6b6b; color:white; border:none; border-radius:50%; width:24px; height:24px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center;">×</button>
+                    </form>
+                {% endif %}
                 <strong>{{ user_dict.get(post.user_id, '不明') }}さん</strong><br>
                 {{ post.content | e }}
                 {% if has_files %}
@@ -323,6 +329,10 @@
                     img.style.maxHeight = '200px';
                     img.style.margin = '8px';
                     img.style.borderRadius = '8px';
+                    img.style.cursor = 'pointer';
+                    img.onclick = function() {
+                        showImageModal(file.url);
+                    };
                     img.onerror = function() {
                         console.error('Image failed to load:', file.url);
                         this.style.display = 'none';
