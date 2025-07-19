@@ -63,10 +63,22 @@ def init_app():
             if 'file' in existing_tables:
                 columns = [col['name'] for col in inspector.get_columns('file')]
                 if 'url' not in columns:
-                    print("fileテーブルにurlカラムが存在しません。テーブルを再作成します。")
-                    db.drop_all()
-                    db.create_all()
-                    print("データベーステーブルを再作成しました")
+                    print("fileテーブルにurlカラムが存在しません。ALTER TABLEで追加します。")
+                    # データを保持したままurlカラムを追加
+                    db.engine.execute('ALTER TABLE file ADD COLUMN url VARCHAR(500)')
+                    print("urlカラムを追加しました")
+                    
+                    # 既存のファイルレコードにURLを設定
+                    try:
+                        files = File.query.all()
+                        for file in files:
+                            if not file.url:
+                                # ローカルファイルのURLを生成
+                                file.url = url_for('uploaded_file', filename=file.filename, _external=True)
+                        db.session.commit()
+                        print(f"{len(files)}個のファイルレコードにURLを設定しました")
+                    except Exception as e:
+                        print(f"既存ファイルのURL設定エラー: {e}")
                 else:
                     print("データベーステーブルは正常です")
             else:
@@ -82,11 +94,11 @@ def init_app():
                 
         except Exception as e:
             print(f"データベース初期化エラー: {e}")
-            # エラーが発生した場合は強制的に再作成
+            # エラーが発生した場合のみ強制的に再作成
             try:
+                print("エラーによりデータベースを強制再作成しました")
                 db.drop_all()
                 db.create_all()
-                print("エラーによりデータベースを強制再作成しました")
                 
                 # 管理者ユーザーを作成
                 admin_user = User(username='admin', password=generate_password_hash('admin'), is_admin=True)
