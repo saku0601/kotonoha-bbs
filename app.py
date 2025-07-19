@@ -461,22 +461,53 @@ def admin_files():
     import os
     files = []
     upload_dir = app.config['UPLOAD_FOLDER']
+    
+    # データベースのファイルレコードも取得
+    db_files = File.query.all()
+    db_file_dict = {f.filename: f for f in db_files}
+    
+    # Firebase Storageの状況確認
+    firebase_status = "未初期化"
+    if firebase_initialized:
+        try:
+            bucket = storage.bucket()
+            firebase_status = f"初期化済み (Bucket: {bucket.name})"
+        except Exception as e:
+            firebase_status = f"エラー: {e}"
+    else:
+        firebase_status = "Firebase初期化失敗"
+    
     if os.path.exists(upload_dir):
         for filename in os.listdir(upload_dir):
             file_path = os.path.join(upload_dir, filename)
             if os.path.isfile(file_path):
                 # ファイルサイズをMB単位で表示
                 size_mb = round(os.path.getsize(file_path) / (1024 * 1024), 2)
+                db_file = db_file_dict.get(filename)
                 files.append({
                     'name': filename,
                     'size_mb': size_mb,
-                    'url': url_for('uploaded_file', filename=filename),
+                    'url': url_for('uploaded_file', filename=filename, _external=True),
+                    'db_url': db_file.url if db_file else 'DBレコードなし',
+                    'mimetype': db_file.mimetype if db_file else '不明',
                     'exists': True
                 })
     else:
         flash('uploadsフォルダが存在しません')
     
-    return render_template('admin_files.html', files=files)
+    # DBレコードのみでファイルが存在しないものも表示
+    for db_file in db_files:
+        if not any(f['name'] == db_file.filename for f in files):
+            files.append({
+                'name': db_file.filename,
+                'size_mb': 0,
+                'url': 'ファイルなし',
+                'db_url': db_file.url or 'URLなし',
+                'mimetype': db_file.mimetype or '不明',
+                'exists': False
+            })
+    
+    return render_template('admin_files.html', files=files, firebase_status=firebase_status)
 
 if __name__ == '__main__':
     with app.app_context():

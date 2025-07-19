@@ -28,9 +28,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px;
+            padding: 15px;
             border: 1px solid #ddd;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
             border-radius: 4px;
             background: #f9f9f9;
         }
@@ -40,10 +40,20 @@
         .file-name {
             font-weight: bold;
             color: #333;
+            margin-bottom: 5px;
+        }
+        .file-details {
+            color: #666;
+            font-size: 0.8em;
+            line-height: 1.4;
         }
         .file-size {
             color: #666;
             font-size: 0.9em;
+        }
+        .missing-file {
+            background: #fff3cd;
+            border-color: #ffeaa7;
         }
         .file-actions {
             display: flex;
@@ -88,6 +98,9 @@
     <div class="container">
         <a href="{{ url_for('board') }}" class="back-link">← コルクボードに戻る</a>
         <h1>📁 アップロードファイル一覧</h1>
+        <div style="background: #e7f3ff; padding: 10px; border-radius: 4px; margin-bottom: 20px;">
+            <strong>Firebase Storage状況:</strong> {{ firebase_status }}
+        </div>
         
         {% with messages = get_flashed_messages() %}
             {% if messages %}
@@ -105,14 +118,24 @@
             {% if files %}
                 <p><strong>ファイル数: {{ files|length }}個</strong></p>
                 {% for file in files %}
-                    <div class="file-item">
+                    <div class="file-item {% if not file.exists %}missing-file{% endif %}">
                         <div class="file-info">
                             <div class="file-name">{{ file.name }}</div>
-                            <div class="file-size">{{ file.size_mb }} MB</div>
+                            <div class="file-details">
+                                <div>サイズ: {{ file.size_mb }} MB</div>
+                                <div>MIME: {{ file.mimetype }}</div>
+                                <div>ファイルURL: {{ file.url }}</div>
+                                <div>DB URL: {{ file.db_url }}</div>
+                                <div>状態: {% if file.exists %}✅ 存在{% else %}❌ ファイルなし{% endif %}</div>
+                            </div>
                         </div>
                         <div class="file-actions">
-                            <a href="{{ file.url }}" target="_blank" class="btn btn-view">表示</a>
-                            <a href="{{ file.url }}" download class="btn btn-download">ダウンロード</a>
+                            {% if file.exists %}
+                                <a href="{{ file.url }}" target="_blank" class="btn btn-view">表示</a>
+                                <a href="{{ file.url }}" download class="btn btn-download">ダウンロード</a>
+                            {% else %}
+                                <span class="btn" style="background: #dc3545; cursor: not-allowed;">ファイルなし</span>
+                            {% endif %}
                         </div>
                     </div>
                 {% endfor %}
