@@ -130,7 +130,8 @@ def save_file_locally(file, filename):
     """ローカルにファイルを保存（フォールバック）"""
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(file_path)
-    return filename
+    # ローカルファイルのURLを生成
+    return url_for('uploaded_file', filename=filename, _external=True)
 
 login_manager = LoginManager()
 login_manager.login_view = 'login'
@@ -394,10 +395,17 @@ def get_post_images(post_id):
     images = []
     for file in post.files:
         if file.mimetype and file.mimetype.startswith('image/'):
+            # URLの生成を改善
+            if file.url:
+                file_url = file.url
+            else:
+                # ローカルファイルの場合、絶対URLを生成
+                file_url = request.host_url.rstrip('/') + url_for('uploaded_file', filename=file.filename)
+            
             images.append({
                 'id': file.id,
                 'filename': file.filename,
-                'url': file.url if file.url else url_for('uploaded_file', filename=file.filename)
+                'url': file_url
             })
     return jsonify({'images': images})
 
@@ -408,7 +416,13 @@ def post_detail(post_id):
     user = User.query.get(post.user_id)
     files = []
     for file in post.files:
-        file_url = file.url if file.url else url_for('uploaded_file', filename=file.filename)
+        # URLの生成を改善
+        if file.url:
+            file_url = file.url
+        else:
+            # ローカルファイルの場合、絶対URLを生成
+            file_url = request.host_url.rstrip('/') + url_for('uploaded_file', filename=file.filename)
+        
         files.append({
             'filename': file.filename,
             'mimetype': file.mimetype or '',
