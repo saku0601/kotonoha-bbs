@@ -561,6 +561,20 @@ def fix_files():
         upload_dir = app.config['UPLOAD_FOLDER']
         fixed_count = 0
         
+        # 有効な投稿IDを取得（最初の投稿、または管理者の投稿）
+        valid_post = Post.query.first()
+        if not valid_post:
+            # 投稿が存在しない場合は、管理者用の仮投稿を作成
+            admin_user = User.query.filter_by(is_admin=True).first()
+            if admin_user:
+                valid_post = Post(content="システム管理用投稿", user_id=admin_user.id)
+                db.session.add(valid_post)
+                db.session.commit()
+                print("管理者用の仮投稿を作成しました")
+            else:
+                flash('有効な投稿が見つかりません')
+                return redirect(url_for('admin_files'))
+        
         if os.path.exists(upload_dir):
             for filename in os.listdir(upload_dir):
                 file_path = os.path.join(upload_dir, filename)
@@ -578,11 +592,11 @@ def fix_files():
                             filename=filename,
                             mimetype=mimetype,
                             url=url_for('uploaded_file', filename=filename, _external=True),
-                            post_id=1  # 仮の投稿ID
+                            post_id=valid_post.id
                         )
                         db.session.add(new_file)
                         fixed_count += 1
-                        print(f"ファイルレコードを追加: {filename}")
+                        print(f"ファイルレコードを追加: {filename} (post_id: {valid_post.id})")
             
             db.session.commit()
             flash(f'{fixed_count}個のファイルレコードを追加しました')
