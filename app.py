@@ -28,6 +28,11 @@ def init_firebase():
     try:
         # 環境変数からFirebase設定を読み込み
         service_account = os.environ.get('FIREBASE_SERVICE_ACCOUNT')
+        storage_bucket = os.environ.get('FIREBASE_STORAGE_BUCKET', 'kotonoha-bbs.firebasestorage.app')
+        
+        print(f"Firebase初期化開始:")
+        print(f"  - FIREBASE_SERVICE_ACCOUNT: {'設定済み' if service_account else '未設定'}")
+        print(f"  - FIREBASE_STORAGE_BUCKET: {storage_bucket}")
         
         if service_account:
             # サービスアカウントキーをJSONとして解析
@@ -36,7 +41,7 @@ def init_firebase():
             # Firebase Admin SDKを初期化
             cred = credentials.Certificate(service_account_info)
             firebase_admin.initialize_app(cred, {
-                'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET', 'kotonoha-bbs.firebasestorage.app')
+                'storageBucket': storage_bucket
             })
             print("Firebase初期化成功")
             return True
@@ -45,6 +50,7 @@ def init_firebase():
             return False
     except Exception as e:
         print(f"Firebase初期化エラー: {e}")
+        print(f"エラーの詳細: {type(e).__name__}")
         return False
 
 # Firebase初期化
@@ -79,6 +85,38 @@ def init_app():
                         print(f"{len(files)}個のファイルレコードにURLを設定しました")
                     except Exception as e:
                         print(f"既存ファイルのURL設定エラー: {e}")
+                    
+                    # uploadsフォルダのファイルをチェックして、DBレコードがないものを追加
+                    try:
+                        import os
+                        upload_dir = app.config['UPLOAD_FOLDER']
+                        if os.path.exists(upload_dir):
+                            for filename in os.listdir(upload_dir):
+                                file_path = os.path.join(upload_dir, filename)
+                                if os.path.isfile(file_path):
+                                    # このファイルのDBレコードが存在するかチェック
+                                    existing_file = File.query.filter_by(filename=filename).first()
+                                    if not existing_file:
+                                        # MIMEタイプを推測
+                                        import mimetypes
+                                        mimetype, _ = mimetypes.guess_type(filename)
+                                        if not mimetype:
+                                            mimetype = 'application/octet-stream'
+                                        
+                                        # 新しいファイルレコードを作成
+                                        new_file = File(
+                                            filename=filename,
+                                            mimetype=mimetype,
+                                            url=url_for('uploaded_file', filename=filename, _external=True),
+                                            post_id=1  # 仮の投稿ID（後で修正が必要）
+                                        )
+                                        db.session.add(new_file)
+                                        print(f"ファイルレコードを追加: {filename}")
+                            
+                            db.session.commit()
+                            print("uploadsフォルダのファイルをDBに再登録しました")
+                    except Exception as e:
+                        print(f"uploadsフォルダのファイル再登録エラー: {e}")
                 else:
                     print("データベーステーブルは正常です")
             else:
