@@ -100,6 +100,11 @@
         <h1>📁 アップロードファイル一覧</h1>
         <div style="background: #e7f3ff; padding: 10px; border-radius: 4px; margin-bottom: 20px;">
             <strong>Firebase Storage状況:</strong> {{ firebase_status }}
+            <form method="post" action="{{ url_for('fix_files') }}" style="display: inline; margin-left: 20px;">
+                <button type="submit" style="background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
+                    🔧 既存ファイルをDBに再登録
+                </button>
+            </form>
         </div>
         
         {% with messages = get_flashed_messages() %}

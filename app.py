@@ -547,6 +547,54 @@ def admin_files():
     
     return render_template('admin_files.html', files=files, firebase_status=firebase_status)
 
+@app.route('/admin/fix_files', methods=['POST'])
+@login_required
+def fix_files():
+    """既存ファイルのDB再登録を手動実行"""
+    if not current_user.is_admin:
+        flash('管理者のみアクセス可能です')
+        return redirect(url_for('board'))
+    
+    try:
+        import os
+        import mimetypes
+        upload_dir = app.config['UPLOAD_FOLDER']
+        fixed_count = 0
+        
+        if os.path.exists(upload_dir):
+            for filename in os.listdir(upload_dir):
+                file_path = os.path.join(upload_dir, filename)
+                if os.path.isfile(file_path):
+                    # このファイルのDBレコードが存在するかチェック
+                    existing_file = File.query.filter_by(filename=filename).first()
+                    if not existing_file:
+                        # MIMEタイプを推測
+                        mimetype, _ = mimetypes.guess_type(filename)
+                        if not mimetype:
+                            mimetype = 'application/octet-stream'
+                        
+                        # 新しいファイルレコードを作成
+                        new_file = File(
+                            filename=filename,
+                            mimetype=mimetype,
+                            url=url_for('uploaded_file', filename=filename, _external=True),
+                            post_id=1  # 仮の投稿ID
+                        )
+                        db.session.add(new_file)
+                        fixed_count += 1
+                        print(f"ファイルレコードを追加: {filename}")
+            
+            db.session.commit()
+            flash(f'{fixed_count}個のファイルレコードを追加しました')
+        else:
+            flash('uploadsフォルダが存在しません')
+            
+    except Exception as e:
+        flash(f'エラーが発生しました: {e}')
+        print(f"ファイル修正エラー: {e}")
+    
+    return redirect(url_for('admin_files'))
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
