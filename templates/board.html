@@ -71,23 +71,22 @@
         {% endif %}
     </form>
     <div>
-        {% set category_colors = {
-            '故障事例': '#ffebee',      # 薄い赤（警告色）
-            'パーツ情報': '#e3f2fd',    # 薄い青（情報色）
-            '保証・DID': '#f3e5f5',    # 薄い紫（保証色）
-            'その他': '#f1f8e9'        # 薄い緑（その他色）
-        } %}
-        {% set category_badge_colors = {
-            '故障事例': '#d32f2f',      # 濃い赤
-            'パーツ情報': '#1976d2',    # 濃い青
-            '保証・DID': '#7b1fa2',    # 濃い紫
-            'その他': '#388e3c'        # 濃い緑
-        } %}
         {% for post in posts %}
             {% set angle = (-5 + loop.index0 * 3) % 10 - 5 %}
             {% set has_files = post.files|length > 0 %}
-            {% set post_color = category_colors.get(post.category, '#f1f8e9') %}
-            {% set badge_color = category_badge_colors.get(post.category, '#388e3c') %}
+            {% if post.category == '故障事例' %}
+                {% set post_color = '#ffebee' %}
+                {% set badge_color = '#d32f2f' %}
+            {% elif post.category == 'パーツ情報' %}
+                {% set post_color = '#e3f2fd' %}
+                {% set badge_color = '#1976d2' %}
+            {% elif post.category == '保証・DID' %}
+                {% set post_color = '#f3e5f5' %}
+                {% set badge_color = '#7b1fa2' %}
+            {% else %}
+                {% set post_color = '#f1f8e9' %}
+                {% set badge_color = '#388e3c' %}
+            {% endif %}
             <div class="post clickable-post"
                  data-post-id="{{ post.id }}"
                  style="background: {{ post_color }};
