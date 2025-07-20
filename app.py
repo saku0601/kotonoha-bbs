@@ -72,14 +72,34 @@ def init_app():
                 # titleカラムの追加
                 if 'title' not in columns:
                     print("postテーブルにtitleカラムが存在しません。ALTER TABLEで追加します。")
-                    db.engine.execute('ALTER TABLE post ADD COLUMN title VARCHAR(200) NOT NULL DEFAULT \'タイトルなし\'')
-                    print("titleカラムを追加しました")
+                    try:
+                        with db.engine.connect() as conn:
+                            conn.execute(db.text("ALTER TABLE post ADD COLUMN title VARCHAR(200) NOT NULL DEFAULT 'タイトルなし'"))
+                            conn.commit()
+                        print("titleカラムを追加しました")
+                    except Exception as e:
+                        print(f"titleカラム追加エラー: {e}")
                 
                 # categoryカラムの追加
                 if 'category' not in columns:
                     print("postテーブルにcategoryカラムが存在しません。ALTER TABLEで追加します。")
-                    db.engine.execute('ALTER TABLE post ADD COLUMN category VARCHAR(50) NOT NULL DEFAULT \'その他\'')
-                    print("categoryカラムを追加しました")
+                    try:
+                        with db.engine.connect() as conn:
+                            conn.execute(db.text("ALTER TABLE post ADD COLUMN category VARCHAR(50) NOT NULL DEFAULT 'その他'"))
+                            conn.commit()
+                        print("categoryカラムを追加しました")
+                        
+                        # 既存の投稿にデフォルト値を設定
+                        try:
+                            with db.engine.connect() as conn:
+                                conn.execute(db.text("UPDATE post SET title = 'タイトルなし' WHERE title IS NULL"))
+                                conn.execute(db.text("UPDATE post SET category = 'その他' WHERE category IS NULL"))
+                                conn.commit()
+                            print("既存の投稿にデフォルト値を設定しました")
+                        except Exception as e:
+                            print(f"既存投稿のデフォルト値設定エラー: {e}")
+                    except Exception as e:
+                        print(f"categoryカラム追加エラー: {e}")
             
             # fileテーブルが存在する場合、urlカラムの存在を確認
             if 'file' in existing_tables:
@@ -87,8 +107,13 @@ def init_app():
                 if 'url' not in columns:
                     print("fileテーブルにurlカラムが存在しません。ALTER TABLEで追加します。")
                     # データを保持したままurlカラムを追加
-                    db.engine.execute('ALTER TABLE file ADD COLUMN url VARCHAR(500)')
-                    print("urlカラムを追加しました")
+                    try:
+                        with db.engine.connect() as conn:
+                            conn.execute(db.text("ALTER TABLE file ADD COLUMN url VARCHAR(500)"))
+                            conn.commit()
+                        print("urlカラムを追加しました")
+                    except Exception as e:
+                        print(f"urlカラム追加エラー: {e}")
                     
                     # 既存のファイルレコードにURLを設定
                     try:
