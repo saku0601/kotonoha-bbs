@@ -65,6 +65,22 @@ def init_app():
             inspector = inspect(db.engine)
             existing_tables = inspector.get_table_names()
             
+            # postテーブルが存在する場合、新しいカラムの存在を確認
+            if 'post' in existing_tables:
+                columns = [col['name'] for col in inspector.get_columns('post')]
+                
+                # titleカラムの追加
+                if 'title' not in columns:
+                    print("postテーブルにtitleカラムが存在しません。ALTER TABLEで追加します。")
+                    db.engine.execute('ALTER TABLE post ADD COLUMN title VARCHAR(200) NOT NULL DEFAULT \'タイトルなし\'')
+                    print("titleカラムを追加しました")
+                
+                # categoryカラムの追加
+                if 'category' not in columns:
+                    print("postテーブルにcategoryカラムが存在しません。ALTER TABLEで追加します。")
+                    db.engine.execute('ALTER TABLE post ADD COLUMN category VARCHAR(50) NOT NULL DEFAULT \'その他\'')
+                    print("categoryカラムを追加しました")
+            
             # fileテーブルが存在する場合、urlカラムの存在を確認
             if 'file' in existing_tables:
                 columns = [col['name'] for col in inspector.get_columns('file')]
@@ -103,12 +119,17 @@ def init_app():
                                         if not mimetype:
                                             mimetype = 'application/octet-stream'
                                         
+                                        # 仮の投稿を作成してファイルを関連付け
+                                        temp_post = Post(content="復旧されたファイル", title="復旧ファイル", category="その他", user_id=1)
+                                        db.session.add(temp_post)
+                                        db.session.flush()  # IDを取得するためにflush
+                                        
                                         # 新しいファイルレコードを作成
                                         new_file = File(
                                             filename=filename,
                                             mimetype=mimetype,
                                             url=url_for('uploaded_file', filename=filename, _external=True),
-                                            post_id=1  # 仮の投稿ID（後で修正が必要）
+                                            post_id=temp_post.id
                                         )
                                         db.session.add(new_file)
                                         print(f"ファイルレコードを追加: {filename}")
@@ -226,14 +247,24 @@ def logout():
 @login_required
 def post():
     if request.method == 'POST':
-        content = request.form['content']
+        title = request.form.get('title', '').strip()
+        category = request.form.get('category', '')
+        content = request.form.get('content', '').strip()
         files = request.files.getlist('files')
-        if not content.strip() and not files:
-            flash('内容またはファイルを入力してください。')
+        
+        if not title or not category or not content.strip():
+            flash('車種・題名、カテゴリ、詳細内容を入力してください。')
             return redirect(url_for('post'))
-        new_post = Post(content=content, user_id=current_user.id)
+        
+        new_post = Post(
+            title=title,
+            category=category,
+            content=content,
+            user_id=current_user.id
+        )
         db.session.add(new_post)
         db.session.commit()
+        
         for file in files:
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
@@ -243,6 +274,7 @@ def post():
                 if file_url:
                     new_file = File(filename=filename, mimetype=mimetype, post_id=new_post.id, url=file_url)
                     db.session.add(new_file)
+        
         db.session.commit()
         flash('付箋を投稿しました！')
         return redirect(url_for('board'))
@@ -252,10 +284,17 @@ def post():
 @login_required
 def board():
     q = request.args.get('q', '')
+    category = request.args.get('category', '')
+    
+    query = Post.query
+    
     if q:
-        posts = Post.query.filter(Post.content.contains(q)).order_by(Post.id.desc()).all()
-    else:
-        posts = Post.query.order_by(Post.id.desc()).all()
+        query = query.filter(Post.content.contains(q) | Post.title.contains(q))
+    
+    if category:
+        query = query.filter(Post.category == category)
+    
+    posts = query.order_by(Post.id.desc()).all()
     comments = Comment.query.all()
     # ユーザーID→ユーザー名の辞書を作成
     user_dict = {user.id: user.username for user in User.query.all()}
@@ -287,7 +326,17 @@ def edit_post(post_id):
         flash('自分の投稿または管理者のみ編集できます。')
         return redirect(url_for('board'))
     if request.method == 'POST':
-        post.content = request.form['content']
+        title = request.form.get('title', '').strip()
+        category = request.form.get('category', '')
+        content = request.form.get('content', '').strip()
+        
+        if not title or not category or not content:
+            flash('車種・題名、カテゴリ、詳細内容を入力してください。')
+            return redirect(url_for('edit_post', post_id=post_id))
+        
+        post.title = title
+        post.category = category
+        post.content = content
         db.session.commit()
         flash('投稿を編集しました。')
         return redirect(url_for('board'))

@@ -12,6 +12,8 @@ class User(UserMixin, db.Model):
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
+    title = db.Column(db.String(200), nullable=False)  # 車種・題名
+    category = db.Column(db.String(50), nullable=False)  # カテゴリ
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     files = db.relationship('File', backref='post', cascade="all, delete-orphan")
 

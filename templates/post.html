@@ -3,6 +3,13 @@
 <head>
     <title>付箋を投稿</title>
     <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], textarea, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #4b2e09; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        .radio-group { display: flex; gap: 15px; }
+        .radio-group label { display: flex; align-items: center; gap: 5px; font-weight: normal; }
         #progress-container {
             width: 100%;
             background: #eee;
@@ -24,11 +31,47 @@
 <body>
     <h2>付箋を投稿</h2>
     <form id="postForm" method="post" enctype="multipart/form-data">
-        <textarea name="content" rows="5" cols="40" placeholder="付箋の内容を入力してください" required></textarea><br>
-        <input type="file" name="files" id="fileInput" multiple><br>
+        <div class="form-group">
+            <label for="title">車種・題名:</label>
+            <input type="text" name="title" id="title" placeholder="車種や題名を入力してください" required>
+        </div>
+        
+        <div class="form-group">
+            <label>カテゴリ:</label>
+            <div class="radio-group">
+                <label>
+                    <input type="radio" name="category" value="故障事例" required>
+                    故障事例
+                </label>
+                <label>
+                    <input type="radio" name="category" value="パーツ情報" required>
+                    パーツ情報
+                </label>
+                <label>
+                    <input type="radio" name="category" value="保証・DID" required>
+                    保証・DID
+                </label>
+                <label>
+                    <input type="radio" name="category" value="その他" required>
+                    その他
+                </label>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="content">詳細内容:</label>
+            <textarea name="content" id="content" rows="5" cols="40" placeholder="詳細内容を入力してください" required></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="fileInput">ファイル添付:</label>
+            <input type="file" name="files" id="fileInput" multiple>
+        </div>
+        
         <div id="progress-container">
             <div id="progress-bar">0%</div>
         </div>
+        
         <button type="submit">投稿</button>
     </form>
     <a href="{{ url_for('board') }}">コルクボードへ戻る</a>
@@ -63,6 +106,8 @@
         const fileInput = document.getElementById('fileInput');
         const files = Array.from(fileInput.files);
         const formData = new FormData();
+        formData.append('title', form.title.value);
+        formData.append('category', form.category.value);
         formData.append('content', form.content.value);
 
         // 画像・動画の圧縮処理
