@@ -71,13 +71,26 @@
         {% endif %}
     </form>
     <div>
-        {% set colors = ['#fff8b0', '#ffd1dc', '#b0e0ff', '#c1ffc1', '#ffe4b0'] %}
+        {% set category_colors = {
+            '故障事例': '#ffebee',      # 薄い赤（警告色）
+            'パーツ情報': '#e3f2fd',    # 薄い青（情報色）
+            '保証・DID': '#f3e5f5',    # 薄い紫（保証色）
+            'その他': '#f1f8e9'        # 薄い緑（その他色）
+        } %}
+        {% set category_badge_colors = {
+            '故障事例': '#d32f2f',      # 濃い赤
+            'パーツ情報': '#1976d2',    # 濃い青
+            '保証・DID': '#7b1fa2',    # 濃い紫
+            'その他': '#388e3c'        # 濃い緑
+        } %}
         {% for post in posts %}
             {% set angle = (-5 + loop.index0 * 3) % 10 - 5 %}
             {% set has_files = post.files|length > 0 %}
+            {% set post_color = category_colors.get(post.category, '#f1f8e9') %}
+            {% set badge_color = category_badge_colors.get(post.category, '#388e3c') %}
             <div class="post clickable-post"
                  data-post-id="{{ post.id }}"
-                 style="background: {{ colors[loop.index0 % colors|length] }};
+                 style="background: {{ post_color }};
                         border: 2px solid #4b2e09;
                         border-radius: 12px;
                         padding: 16px;
@@ -96,7 +109,7 @@
                     </form>
                 {% endif %}
                 <div style="margin-bottom: 8px;">
-                    <span style="background: #4b2e09; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em;">{{ post.category }}</span>
+                    <span style="background: {{ badge_color }}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em;">{{ post.category }}</span>
                 </div>
                 <div style="font-weight: bold; margin-bottom: 8px; color: #4b2e09;">{{ post.title }}</div>
                 <strong>{{ user_dict.get(post.user_id, '不明') }}さん</strong><br>
@@ -109,9 +122,9 @@
                 <hr>
                 <form method="post" action="{{ url_for('comment', post_id=post.id) }}" style="margin-top: 8px;">
                     <input type="text" name="comment" placeholder="コメントを入力" required
-                           style="width: 120px; border: none; border-radius: 8px; background: {{ colors[loop.index0 % colors|length] }}; padding: 4px 8px; box-shadow: 2px 2px 8px #bfae7c;">
+                           style="width: 120px; border: none; border-radius: 8px; background: {{ post_color }}; padding: 4px 8px; box-shadow: 2px 2px 8px #bfae7c;">
                     <button type="submit"
-                            style="border: none; border-radius: 8px; background: {{ colors[loop.index0 % colors|length] }}; padding: 4px 12px; margin-left: 4px; box-shadow: 2px 2px 8px #bfae7c; cursor: pointer;">
+                            style="border: none; border-radius: 8px; background: {{ post_color }}; padding: 4px 12px; margin-left: 4px; box-shadow: 2px 2px 8px #bfae7c; cursor: pointer;">
                         コメント
                     </button>
                 </form>
