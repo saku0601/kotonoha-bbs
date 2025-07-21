@@ -520,9 +520,9 @@ def delete_image(post_id, file_id):
         else:
             print("Firebaseが初期化されていないため、Firebaseからの削除をスキップします")
     else:
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-    if os.path.exists(file_path):
-        os.remove(file_path)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
     db.session.delete(file)
     db.session.commit()
     flash('画像を削除しました。')
