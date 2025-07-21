@@ -310,39 +310,29 @@ def post():
 def board():
     try:
         print("=== /board ルート開始 ===")
-    q = request.args.get('q', '')
+        q = request.args.get('q', '')
         category = request.args.get('category', '')
-        
         print(f"検索クエリ: {q}")
         print(f"カテゴリ: {category}")
-        
         query = Post.query
         print("Post.query作成完了")
-        
         if q:
             query = query.filter(Post.content.contains(q) | Post.title.contains(q))
             print("検索フィルター適用")
-        
         if category:
             query = query.filter(Post.category == category)
             print("カテゴリフィルター適用")
-        
         posts = query.order_by(Post.id.desc()).all()
         print(f"投稿取得完了: {len(posts)}件")
-        
-    comments = Comment.query.all()
+        comments = Comment.query.all()
         print(f"コメント取得完了: {len(comments)}件")
-        
-    # ユーザーID→ユーザー名の辞書を作成
         users = User.query.all()
         user_dict = {user.id: user.username for user in users}
         print(f"ユーザー辞書作成完了: {len(user_dict)}件")
-        
         print("=== テンプレートレンダリング開始 ===")
         result = render_template('board.html', posts=posts, comments=comments, user_dict=user_dict)
         print("=== テンプレートレンダリング完了 ===")
         return result
-        
     except Exception as e:
         print(f"=== /board ルートでエラー発生 ===")
         print(f"エラータイプ: {type(e).__name__}")
