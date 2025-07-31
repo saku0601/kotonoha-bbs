@@ -310,7 +310,7 @@ def post():
 def board():
     try:
         print("=== /board ルート開始 ===")
-    q = request.args.get('q', '')
+        q = request.args.get('q', '')
         category = request.args.get('category', '')
         print(f"検索クエリ: {q}")
         print(f"カテゴリ: {category}")
@@ -324,7 +324,7 @@ def board():
             print("カテゴリフィルター適用")
         posts = query.order_by(Post.id.desc()).all()
         print(f"投稿取得完了: {len(posts)}件")
-    comments = Comment.query.all()
+        comments = Comment.query.all()
         print(f"コメント取得完了: {len(comments)}件")
         users = User.query.all()
         user_dict = {user.id: user.username for user in users}
@@ -408,10 +408,10 @@ def delete_post(post_id):
                     print("Firebaseが初期化されていないため、Firebaseからの削除をスキップします")
             else:
                 # ローカルから削除
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        db.session.delete(file)
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                db.session.delete(file)
         except Exception as e:
             print(f"ファイル削除エラー: {e}")  # ここでエラーが出ても削除処理を継続
     db.session.delete(post)
@@ -488,10 +488,8 @@ def add_image(post_id):
         print("file saved:", filename)
         print("Fileレコード追加:", new_file)
         flash('画像を追加しました。')
-        else:
-            flash('画像のアップロードに失敗しました。')
     else:
-        flash('有効な画像ファイルを選択してください。')
+        flash('画像のアップロードに失敗しました。')
     return redirect(url_for('board'))
 
 @app.route('/edit_post/<int:post_id>/delete_image/<int:file_id>', methods=['POST'])
@@ -520,10 +518,10 @@ def delete_image(post_id, file_id):
         else:
             print("Firebaseが初期化されていないため、Firebaseからの削除をスキップします")
     else:
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-    if os.path.exists(file_path):
-        os.remove(file_path)
-    db.session.delete(file)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        db.session.delete(file)
     db.session.commit()
     flash('画像を削除しました。')
     return redirect(url_for('board'))
