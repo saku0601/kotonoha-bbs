@@ -701,19 +701,36 @@ def fix_files():
 def create_admin():
     """管理者ユーザーを強制的に作成"""
     try:
-        # 既存のadminユーザーを削除
+        # 既存のadminユーザーを確認
         existing_admin = User.query.filter_by(username='admin').first()
         if existing_admin:
-            db.session.delete(existing_admin)
+            # 既存のadminユーザーが投稿を持っているかチェック
+            admin_posts = Post.query.filter_by(user_id=existing_admin.id).count()
+            if admin_posts > 0:
+                # 投稿がある場合は、パスワードのみ更新
+                existing_admin.password = generate_password_hash('admin')
+                db.session.commit()
+                print("既存のadminユーザーのパスワードを更新しました")
+                flash('既存の管理者ユーザーのパスワードを更新しました: admin/admin')
+            else:
+                # 投稿がない場合は削除して新規作成
+                db.session.delete(existing_admin)
+                db.session.commit()
+                print("既存のadminユーザーを削除しました")
+                
+                # 新しいadminユーザーを作成
+                admin_user = User(username='admin', password=generate_password_hash('admin'), is_admin=True)
+                db.session.add(admin_user)
+                db.session.commit()
+                print("管理者ユーザーを作成しました: admin/admin")
+                flash('管理者ユーザーを作成しました: admin/admin')
+        else:
+            # adminユーザーが存在しない場合は新規作成
+            admin_user = User(username='admin', password=generate_password_hash('admin'), is_admin=True)
+            db.session.add(admin_user)
             db.session.commit()
-            print("既存のadminユーザーを削除しました")
-        
-        # 新しいadminユーザーを作成
-        admin_user = User(username='admin', password=generate_password_hash('admin'), is_admin=True)
-        db.session.add(admin_user)
-        db.session.commit()
-        print("管理者ユーザーを作成しました: admin/admin")
-        flash('管理者ユーザーを作成しました: admin/admin')
+            print("管理者ユーザーを作成しました: admin/admin")
+            flash('管理者ユーザーを作成しました: admin/admin')
         
     except Exception as e:
         flash(f'エラーが発生しました: {e}')
