@@ -11,6 +11,16 @@
         <button type="submit">ログイン</button>
     </form>
     <a href="{{ url_for('register') }}">新規登録はこちら</a>
+    
+    <!-- 管理者ユーザー作成ボタン -->
+    <hr>
+    <h3>管理者ユーザー作成</h3>
+    <form method="post" action="{{ url_for('create_admin') }}">
+        <button type="submit" onclick="return confirm('管理者ユーザー（admin/admin）を作成しますか？')">
+            管理者ユーザーを作成
+        </button>
+    </form>
+    
     {% with messages = get_flashed_messages() %}
       {% if messages %}
         <ul>
