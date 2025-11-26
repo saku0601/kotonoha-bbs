@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: corkboard-bbs
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: corkboard-db
+          property: connectionString
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      - key: FIREBASE_STORAGE_BUCKET
+        value: kotonoha-bbs.firebasestorage.app
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+databases:
+  - name: corkboard-db
+    plan: free
+    databaseName: corkboard
+    user: corkboard_user
+

@@ -17,6 +17,7 @@ venv.bak/
 # Flask
 instance/
 .webassets-cache
+uploads/
 
 # Database
 *.db

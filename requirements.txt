@@ -1,7 +1,7 @@
-Flask
-Flask-Login
-Flask-SQLAlchemy
-gunicorn
-Werkzeug
-psycopg2-binary
-firebase-admin
+Flask>=3.0.0
+Flask-Login>=0.6.3
+Flask-SQLAlchemy>=3.1.1
+gunicorn>=21.2.0
+Werkzeug>=3.0.0
+psycopg2-binary>=2.9.9
+firebase-admin>=6.0.0

@@ -12,11 +12,15 @@ from firebase_admin import credentials, storage
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_secret_key_change_in_production')
 
-# Heroku環境ではDATABASE_URLを使う
-if 'DATABASE_URL' in os.environ:
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL'].replace('postgres://', 'postgresql://')
+# Render/Heroku環境ではDATABASE_URLを使う
+database_url = os.environ.get('DATABASE_URL')
+if database_url:
+    # postgres:// を postgresql:// に変換（Render/Heroku対応）
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'corkboard.sqlite')}"
 
